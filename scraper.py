@@ -11,9 +11,10 @@ from config import DEFAULT_HEADERS, DEFAULT_TIMEOUT
 
 
 class NovelScraper:
-    """Class for scraping novel information and content from websites"""
+    """Class for scraping novel content from websites"""
 
-    def __init__(self, base_url, novel_slug, novel_id, headers=None):
+    def __init__(self, base_url, novel_slug, novel_id,
+                 novel_title="", novel_author="", novel_description="", cover_image=None, headers=None):
         """
         Initialize the scraper
 
@@ -21,6 +22,10 @@ class NovelScraper:
             base_url: Base URL of the website (e.g., https://metruyenchu.com.vn)
             novel_slug: Novel slug in URL (e.g., 'nuong-tu-dung-la-nu-ma-dau')
             novel_id: Novel ID for fetching chapter list (e.g., 60240)
+            novel_title: Novel title (optional)
+            novel_author: Novel author (optional)
+            novel_description: Novel description (optional)
+            cover_image: Cover image bytes (optional)
             headers: Custom headers for requests (optional)
         """
         self.base_url = base_url.rstrip('/')
@@ -31,66 +36,10 @@ class NovelScraper:
         self.session.headers.update(self.headers)
 
         # Metadata
-        self.novel_title = ""
-        self.novel_author = ""
-        self.novel_description = ""
-        self.cover_image = None
-
-    def get_novel_info(self):
-        """Fetch novel information from the novel's homepage"""
-        try:
-            novel_url = f"{self.base_url}/{self.novel_slug}"
-            print(f"Đang lấy thông tin truyện từ: {novel_url}")
-
-            response = self.session.get(novel_url, timeout=DEFAULT_TIMEOUT)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'html.parser')
-
-            # Get title - find h1 with itemprop="name"
-            title_tag = soup.find('h1', itemprop='name') or soup.find('h1')
-            if title_tag:
-                self.novel_title = html.unescape(title_tag.get_text(strip=True))
-
-            # Get author - find a tag with itemprop="author"
-            author_tag = soup.find('a', itemprop='author') or \
-                        soup.find('a', href=re.compile(r'/tac-gia/'))
-            if author_tag:
-                self.novel_author = author_tag.get_text(strip=True)
-
-            # Get description - find div with itemprop="description"
-            desc_tag = soup.find('div', itemprop='description')
-            if desc_tag:
-                desc_text = desc_tag.get_text(separator='\n', strip=True)
-                self.novel_description = desc_text
-
-            # Get cover image - find img with itemprop="image"
-            cover_tag = soup.find('img', itemprop='image')
-            if cover_tag and cover_tag.get('src'):
-                cover_url = cover_tag.get('src')
-                if not cover_url.startswith('http'):
-                    cover_url = urljoin(self.base_url, cover_url)
-                self.cover_image = self._download_image(cover_url)
-
-            print(f"✓ Tiêu đề: {self.novel_title}")
-            print(f"✓ Tác giả: {self.novel_author}")
-
-        except Exception as e:
-            print(f"⚠ Không lấy được đầy đủ thông tin truyện: {e}")
-            # Use default information
-            if not self.novel_title:
-                self.novel_title = self.novel_slug.replace('-', ' ').title()
-            if not self.novel_author:
-                self.novel_author = "Không rõ"
-
-    def _download_image(self, url):
-        """Download cover image"""
-        try:
-            response = self.session.get(url, timeout=DEFAULT_TIMEOUT)
-            response.raise_for_status()
-            return response.content
-        except Exception as e:
-            print(f"⚠ Không tải được ảnh bìa: {e}")
-            return None
+        self.novel_title = novel_title
+        self.novel_author = novel_author
+        self.novel_description = novel_description
+        self.cover_image = cover_image
 
     def get_chapter_list(self, delay=0.5, max_pages=None):
         """
