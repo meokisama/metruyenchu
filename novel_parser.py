@@ -109,11 +109,22 @@ def parse_novel_url(url):
                 print(f"✗ ({e})")
 
         # Extract total chapters
+        # Find: <li><b>Số chương :</b> 1179</li>
         total_chapters = None
-        chapter_li = soup.find('li', string=re.compile(r'Số chương\s*:'))
-        if chapter_li:
-            chapter_text = chapter_li.get_text()
-            chapter_match = re.search(r'(\d+)', chapter_text)
+
+        # Method 1: Find <b> tag containing "Số chương" then get parent <li>
+        chapter_b = soup.find('b', string=re.compile(r'Số chương'))
+        if chapter_b:
+            chapter_li = chapter_b.parent
+            if chapter_li:
+                chapter_text = chapter_li.get_text()
+                chapter_match = re.search(r'(\d+)', chapter_text)
+                if chapter_match:
+                    total_chapters = int(chapter_match.group(1))
+
+        # Method 2: Find any text containing "Số chương :" followed by numbers
+        if not total_chapters:
+            chapter_match = re.search(r'Số chương\s*:\s*(\d+)', response.text)
             if chapter_match:
                 total_chapters = int(chapter_match.group(1))
 
