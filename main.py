@@ -43,6 +43,41 @@ def main():
             print("\n✗ Không tìm thấy chương nào!")
             return
 
+        # Ask user for chapter range
+        total_chapters = len(chapters)
+        print(f"\n✓ Tìm thấy {total_chapters} chương")
+        print("\nChọn phạm vi chương:")
+        print("  1. Lấy tất cả chương")
+        print("  2. Lấy từ chương X đến chương Y")
+
+        choice = input("\nLựa chọn (1/2): ").strip()
+
+        if choice == '2':
+            while True:
+                try:
+                    start_input = input(f"Từ chương (1-{total_chapters}): ").strip()
+                    end_input = input(f"Đến chương (1-{total_chapters}): ").strip()
+
+                    start_chapter = int(start_input) if start_input else 1
+                    end_chapter = int(end_input) if end_input else total_chapters
+
+                    if start_chapter < 1 or start_chapter > total_chapters:
+                        print(f"✗ Chương bắt đầu phải từ 1 đến {total_chapters}")
+                        continue
+                    if end_chapter < 1 or end_chapter > total_chapters:
+                        print(f"✗ Chương kết thúc phải từ 1 đến {total_chapters}")
+                        continue
+                    if start_chapter > end_chapter:
+                        print(f"✗ Chương bắt đầu không được lớn hơn chương kết thúc")
+                        continue
+
+                    # Filter chapters
+                    chapters = chapters[start_chapter-1:end_chapter]
+                    print(f"\n✓ Đã chọn: Chương {start_chapter} đến {end_chapter} ({len(chapters)} chương)")
+                    break
+                except ValueError:
+                    print("✗ Vui lòng nhập số hợp lệ")
+
         print(f"\nSẵn sàng crawl {len(chapters)} chương.")
         response = input("Tiếp tục? (y/n): ").strip().lower()
         if response != 'y':

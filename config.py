@@ -17,7 +17,6 @@ CHAPTERS_PER_PAGE = 100
 EPUB_CSS_STYLE = '''
 @namespace epub "http://www.idpf.org/2007/ops";
 body {
-    font-family: Georgia, "Times New Roman", Times, serif;
     line-height: 1.8;
     margin: 2em;
 }
@@ -29,6 +28,5 @@ h1 {
 p {
     text-align: justify;
     margin: 0.5em 0;
-    text-indent: 2em;
 }
 '''
