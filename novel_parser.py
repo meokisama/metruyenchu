@@ -7,7 +7,7 @@ import html
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urljoin
-from config import DEFAULT_HEADERS, DEFAULT_TIMEOUT
+from config import DEFAULT_HEADERS, DEFAULT_TIMEOUT, CHAPTERS_PER_PAGE
 
 
 def parse_novel_url(url):
@@ -133,9 +133,8 @@ def parse_novel_url(url):
 
         print(f"✓ Tổng số chương: {total_chapters}")
 
-        # Calculate max pages (100 chapters per page)
-        max_pages = math.ceil(total_chapters / 100)
-        print(f"✓ Số trang cần fetch: {max_pages}")
+        # Calculate max pages
+        max_pages = math.ceil(total_chapters / CHAPTERS_PER_PAGE)
 
         return {
             'base_url': base_url,

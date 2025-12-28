@@ -56,7 +56,7 @@ class NovelScraper:
         page = 1
 
         if max_pages:
-            print(f"\nĐang lấy danh sách chương (tối đa {max_pages} trang)...")
+            print(f"\nĐang lấy danh sách chương ({max_pages} trang)...")
         else:
             print("\nĐang lấy danh sách chương...")
 
@@ -134,52 +134,50 @@ class NovelScraper:
 
         Returns:
             String containing chapter content (HTML)
+
+        Raises:
+            Exception: If failed to fetch or parse chapter content
         """
-        try:
-            response = self.session.get(chapter_url, timeout=DEFAULT_TIMEOUT)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'html.parser')
+        response = self.session.get(chapter_url, timeout=DEFAULT_TIMEOUT)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
 
-            # Find div containing content - in order of priority
-            content_div = soup.find('div', class_='truyen') or \
-                         soup.find('div', id='chapter-content') or \
-                         soup.find('div', class_='chapter-content') or \
-                         soup.find('div', id='content')
+        # Find div containing content - in order of priority
+        content_div = soup.find('div', class_='truyen') or \
+                     soup.find('div', id='chapter-content') or \
+                     soup.find('div', class_='chapter-content') or \
+                     soup.find('div', id='content')
 
-            if content_div:
-                # Clean content
-                # Remove script, style tags
-                for tag in content_div.find_all(['script', 'style']):
-                    tag.decompose()
+        if not content_div:
+            raise ValueError("Không tìm thấy nội dung chương")
 
-                # Remove comments and ads if any
-                for tag in content_div.find_all(['iframe', 'ins']):
-                    tag.decompose()
+        # Clean content
+        # Remove script, style tags
+        for tag in content_div.find_all(['script', 'style']):
+            tag.decompose()
 
-                # Get HTML content
-                content_html = str(content_div)
+        # Remove comments and ads if any
+        for tag in content_div.find_all(['iframe', 'ins']):
+            tag.decompose()
 
-                # Process <br> tags to create paragraphs
-                # Convert consecutive <br> to </p><p>
-                content_html = re.sub(r'(<br\s*/?>){2,}', '</p><p>', content_html, flags=re.IGNORECASE)
-                # Convert single <br> to </p><p>
-                content_html = re.sub(r'<br\s*/?>', '</p><p>', content_html, flags=re.IGNORECASE)
+        # Get HTML content
+        content_html = str(content_div)
 
-                # Wrap in div and ensure p tags exist
-                if '<p>' not in content_html.lower():
-                    # If no p tag, wrap text in p
-                    soup_content = BeautifulSoup(content_html, 'html.parser')
-                    text_content = soup_content.get_text()
-                    paragraphs = [f"<p>{para.strip()}</p>" for para in text_content.split('\n') if para.strip()]
-                    content_html = '\n'.join(paragraphs)
+        # Process <br> tags to create paragraphs
+        # Convert consecutive <br> to </p><p>
+        content_html = re.sub(r'(<br\s*/?>){2,}', '</p><p>', content_html, flags=re.IGNORECASE)
+        # Convert single <br> to </p><p>
+        content_html = re.sub(r'<br\s*/?>', '</p><p>', content_html, flags=re.IGNORECASE)
 
-                return f"<div>{content_html}</div>"
-            else:
-                return "<p>Không tìm thấy nội dung chương.</p>"
+        # Wrap in div and ensure p tags exist
+        if '<p>' not in content_html.lower():
+            # If no p tag, wrap text in p
+            soup_content = BeautifulSoup(content_html, 'html.parser')
+            text_content = soup_content.get_text()
+            paragraphs = [f"<p>{para.strip()}</p>" for para in text_content.split('\n') if para.strip()]
+            content_html = '\n'.join(paragraphs)
 
-        except Exception as e:
-            print(f"\n    ✗ Lỗi: {e}")
-            return f"<p>Lỗi khi tải chương: {e}</p>"
+        return f"<div>{content_html}</div>"
 
     def crawl_all_chapters(self, chapters, delay=1.0, max_retries=3):
         """
@@ -201,7 +199,8 @@ class NovelScraper:
 
             while retries < max_retries and not success:
                 try:
-                    print(f"  [{idx}/{len(chapters)}] {chapter['title']}...", end=' ')
+                    if retries == 0:
+                        print(f"  [{idx}/{len(chapters)}] {chapter['title']}...", end=' ')
 
                     content = self.get_chapter_content(chapter['url'])
                     chapter['content'] = content
@@ -212,11 +211,12 @@ class NovelScraper:
 
                 except Exception as e:
                     retries += 1
+                    error_msg = str(e)
                     if retries < max_retries:
-                        print(f"✗ (Thử lại {retries}/{max_retries})...", end=' ')
+                        print(f"✗ ({error_msg}) - Thử lại {retries}/{max_retries}...", end=' ')
                         time.sleep(delay * 2)
                     else:
-                        print(f"✗ Bỏ qua")
-                        chapter['content'] = f"<p>Lỗi khi tải chương sau {max_retries} lần thử.</p>"
+                        print(f"✗ Bỏ qua ({error_msg})")
+                        chapter['content'] = f"<p>Lỗi khi tải chương sau {max_retries} lần thử: {error_msg}</p>"
 
         return chapters
