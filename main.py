@@ -1,43 +1,45 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from scraper import NovelScraper
 from epub_creator import EpubCreator
-from novel_parser import parse_novel_url
-from config import DEFAULT_DELAY_BETWEEN_REQUESTS
+from sources import SOURCES, print_sources, get_source_by_key
+from config import DEFAULT_CHAPTER_LIST_DELAY
 
 
 def main():
     print("=" * 60)
-    print("METRUYENCHU SCRAPER")
+    print("NOVEL SCRAPER - Multi Source")
     print("=" * 60)
 
+    # Step 1: Choose source
+    print_sources()
+    source_choice = input("\nLựa chọn (1/2): ").strip()
+
+    source_class = get_source_by_key(source_choice)
+    if not source_class:
+        print("✗ Lựa chọn không hợp lệ!")
+        return
+
+    source = source_class()
+    print(f"\n✓ Đã chọn nguồn: {source.name}")
+
+    # Step 2: Input novel URL
     novel_url = input("\nNhập link truyện: ").strip()
     if not novel_url:
         print("✗ URL không hợp lệ!")
         return
 
     try:
-        novel_info = parse_novel_url(novel_url)
+        novel_info = source.parse_novel_url(novel_url)
+    except NotImplementedError as e:
+        print(f"\n✗ {e}")
+        return
     except Exception as e:
         print(f"\n✗ Lỗi: {e}")
         return
 
     try:
-        scraper = NovelScraper(
-            base_url=novel_info['base_url'],
-            novel_slug=novel_info['novel_slug'],
-            novel_id=novel_info['novel_id'],
-            novel_title=novel_info['novel_title'],
-            novel_author=novel_info['novel_author'],
-            novel_description=novel_info['novel_description'],
-            cover_image=novel_info['cover_image']
-        )
-
-        chapters = scraper.get_chapter_list(
-            delay=0.5,
-            max_pages=novel_info['max_pages']
-        )
+        chapters = source.get_chapter_list(novel_info, delay=DEFAULT_CHAPTER_LIST_DELAY)
 
         if not chapters:
             print("\n✗ Không tìm thấy chương nào!")
@@ -84,17 +86,15 @@ def main():
             print("Đã hủy.")
             return
 
-        chapters_with_content = scraper.crawl_all_chapters(
-            chapters,
-            delay=DEFAULT_DELAY_BETWEEN_REQUESTS
-        )
+        # Uses DEFAULT_DELAY_BETWEEN_REQUESTS and DEFAULT_MAX_RETRIES from config
+        chapters_with_content = source.crawl_all_chapters(chapters)
 
         epub_creator = EpubCreator(
-            novel_title=scraper.novel_title,
-            novel_author=scraper.novel_author,
-            novel_id=scraper.novel_id,
-            novel_description=scraper.novel_description,
-            cover_image=scraper.cover_image
+            novel_title=novel_info['novel_title'],
+            novel_author=novel_info['novel_author'],
+            novel_id=novel_info['novel_id'],
+            novel_description=novel_info['novel_description'],
+            cover_image=novel_info['cover_image']
         )
         output_file = epub_creator.create_epub(chapters_with_content)
 
